@@ -1,20 +1,28 @@
-FROM rabbitmq:3.6.14-management
+FROM rabbitmq:3.8.16-management-alpine
 
-EXPOSE 5672 15672
+ARG BUILD_DATE
+ARG SOURCE_COMMIT
 
-VOLUME /var/lib/rabbitmq
+LABEL maintainer "EGA System Developers"
+LABEL org.label-schema.schema-version="1.0"
+LABEL org.label-schema.build-date=$BUILD_DATE
+LABEL org.label-schema.vcs-url="https://github.com/neicnordic/LocalEGA-mq"
+LABEL org.label-schema.vcs-ref=$SOURCE_COMMIT
 
-RUN mkdir -p /etc/rabbitmq/ && \
-    chown -R rabbitmq:rabbitmq /etc/rabbitmq
+ENV RABBITMQ_CONFIG_FILE=/var/lib/rabbitmq/rabbitmq
+ENV RABBITMQ_ADVANCED_CONFIG_FILE=/var/lib/rabbitmq/advanced
+ENV RABBITMQ_LOG_BASE=/var/lib/rabbitmq
 
-# Initialization
-RUN rabbitmq-plugins enable --offline rabbitmq_federation            && \
-    rabbitmq-plugins enable --offline rabbitmq_federation_management && \
-    rabbitmq-plugins enable --offline rabbitmq_shovel                && \
-    rabbitmq-plugins enable --offline rabbitmq_shovel_management
+RUN apk add --no-cache ca-certificates openssl
 
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod 755 /usr/local/bin/entrypoint.sh
+RUN rabbitmq-plugins enable --offline rabbitmq_federation rabbitmq_federation_management rabbitmq_shovel rabbitmq_shovel_management
 
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+COPY entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+USER 100:101
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+
 CMD ["rabbitmq-server"]
